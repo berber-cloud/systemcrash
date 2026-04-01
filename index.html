@@ -1,246 +1,214 @@
-```html
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>localhost: terminal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>terminal</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-
         body {
-            background: #000000;
-            min-height: 100vh;
-            font-family: 'Courier New', 'Fira Code', 'SF Mono', monospace;
-            padding: 8px;
-        }
-
-        .terminal {
-            background: #000000;
-            width: 100%;
-            height: 100vh;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .output {
-            flex: 1;
-            background: #000000;
-            color: #00ff00;
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
             font-size: 14px;
             line-height: 1.4;
+            padding: 8px;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #terminal {
+            height: 100%;
             overflow-y: auto;
-            font-family: monospace;
             white-space: pre-wrap;
             word-break: break-word;
-            padding: 8px 12px;
         }
-
         .line {
-            margin-bottom: 2px;
             display: block;
+            margin: 0;
+            padding: 0;
         }
-
         .prompt {
-            color: #00ff00;
-            display: inline;
+            color: #0f0;
         }
-
-        .cmd-text {
-            color: #00ff00;
-            display: inline;
-        }
-
-        .progress-line {
-            color: #00ff00;
-            letter-spacing: 1px;
-        }
-
         ::-webkit-scrollbar {
             width: 8px;
-            background: #111111;
+            background: #111;
         }
-
         ::-webkit-scrollbar-thumb {
-            background: #333333;
+            background: #333;
         }
     </style>
 </head>
 <body>
-<div class="terminal">
-    <div class="output" id="output">
-        <div class="line"><span class="prompt">user@localhost:~$</span> <span class="cmd-text">./extract --android --full</span></div>
-        <div class="line"><span class="cmd-text">initializing...</span></div>
-    </div>
-</div>
+<div id="terminal"></div>
 
 <script>
-    const output = document.getElementById('output');
+    const term = document.getElementById('terminal');
 
-    function print(text, isCommand = false) {
+    function println(text, isPrompt = false, promptText = 'user@localhost:~$ ') {
         const line = document.createElement('div');
         line.className = 'line';
-        if (isCommand) {
-            line.innerHTML = `<span class="prompt">user@localhost:~$</span> <span class="cmd-text">${text}</span>`;
+        if (isPrompt) {
+            line.innerHTML = `<span class="prompt">${promptText}</span>${text}`;
         } else {
-            line.innerHTML = `<span class="cmd-text">${text}</span>`;
+            line.innerText = text;
         }
-        output.appendChild(line);
-        output.scrollTop = output.scrollHeight;
+        term.appendChild(line);
+        term.scrollTop = term.scrollHeight;
     }
 
     function progressBar(percent) {
-        const len = 40;
-        const filled = Math.floor((percent / 100) * len);
-        const empty = len - filled;
+        const width = 40;
+        const filled = Math.floor(percent / 100 * width);
+        const empty = width - filled;
         const bar = '█'.repeat(filled) + '░'.repeat(empty);
+        println(`[${bar}] ${percent}%`);
+    }
+
+    async function delay(ms) {
+        return new Promise(r => setTimeout(r, ms));
+    }
+
+    async function task(name, durationVariation = 1) {
+        println(`> ${name}`);
+        const start = Date.now();
+        let lastPercent = -1;
+        let duration = 2500 + Math.random() * 1000;
+        if (durationVariation === 2) duration = 1800;
+        if (durationVariation === 3) duration = 3200;
+        
         const line = document.createElement('div');
         line.className = 'line';
-        line.innerHTML = `<span class="progress-line">[${bar}] ${percent}%</span>`;
-        output.appendChild(line);
-        output.scrollTop = output.scrollHeight;
-        return line;
-    }
-
-    function updateProgress(lineElem, percent) {
-        const len = 40;
-        const filled = Math.floor((percent / 100) * len);
-        const empty = len - filled;
-        const bar = '█'.repeat(filled) + '░'.repeat(empty);
-        lineElem.innerHTML = `<span class="progress-line">[${bar}] ${percent}%</span>`;
-        output.scrollTop = output.scrollHeight;
-    }
-
-    function delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    async function runTask(name, speed = 'normal') {
-        print(`> ${name}`);
-        
-        let duration = 2800;
-        if (speed === 'slow') duration = 3800;
-        else if (speed === 'fast') duration = 1800;
-        
-        const prog = progressBar(0);
-        const start = Date.now();
+        term.appendChild(line);
         
         while (true) {
             const elapsed = Date.now() - start;
-            let p = (elapsed / duration) * 100;
-            if (p > 100) p = 100;
+            let percent = Math.min(100, Math.floor(elapsed / duration * 100));
             
-            let displayP = p;
-            if (elapsed < 600) {
-                displayP = p * 0.5;
-            } else if (elapsed < 1500) {
-                displayP = 25 + ((p - 25) * 1.2);
+            // неравномерность
+            if (elapsed < 600) percent = Math.floor(percent * 0.6);
+            else if (elapsed < 1400) percent = 30 + Math.floor((percent - 30) * 1.3);
+            
+            percent = Math.min(100, Math.max(0, percent));
+            if (percent !== lastPercent) {
+                const filled = Math.floor(percent / 100 * 40);
+                const empty = 40 - filled;
+                const bar = '█'.repeat(filled) + '░'.repeat(empty);
+                line.innerText = `[${bar}] ${percent}%`;
+                lastPercent = percent;
+                term.scrollTop = term.scrollHeight;
             }
-            if (displayP > 100) displayP = 100;
-            
-            updateProgress(prog, Math.floor(displayP));
-            
             if (elapsed >= duration) {
-                updateProgress(prog, 100);
+                line.innerText = `[${'█'.repeat(40)}] 100%`;
                 break;
             }
             await delay(50);
         }
-        print(`[ok] ${name}`);
+        println(`[ok] ${name}`);
     }
 
     async function main() {
+        println('', true);
+        println('initializing forensic extraction module v2.7', false);
+        await delay(300);
+        println('target: SM-G998B / android 13', false);
         await delay(200);
-        print("target: samsung SM-G998B (android 13)");
-        await delay(150);
-        print("device_id: RF8N20P6LBV");
-        await delay(180);
-        print("bypassing dm-verity");
+        println('device fingerprint: 9A:2B:3C:4D:5E:6F', false);
         await delay(250);
-        print("root access: granted");
+        println('bypassing secure boot...', false);
+        await delay(400);
+        println('root access: granted', false);
         await delay(200);
-        print("");
+        println('----------------------------------------', false);
         
-        const tasks = [
-            { name: "extracting chrome history (2023-2026)", speed: "slow" },
-            { name: "decrypting vk database (messages.db)", speed: "slow" },
-            { name: "retrieving gallery thumbnails", speed: "normal" },
-            { name: "dumping saved wifi networks + psk", speed: "fast" },
-            { name: "google password manager extract", speed: "slow" },
-            { name: "gps location history (24 months)", speed: "normal" },
-            { name: "call logs + sms (android.database)", speed: "fast" },
-            { name: "vk private messages archive", speed: "slow" },
-            { name: "telegram session files", speed: "slow" },
-            { name: "whatsapp crypt14 decrypt", speed: "slow" }
+        const tasksList = [
+            { name: 'extracting chrome history (2023-2026)', var: 1 },
+            { name: 'decrypting vk messenger database', var: 2 },
+            { name: 'retrieving gallery thumbnails', var: 1 },
+            { name: 'dumping saved wifi networks (psk)', var: 3 },
+            { name: 'google password manager extract', var: 2 },
+            { name: 'gps location history (24 months)', var: 1 },
+            { name: 'call logs + sms', var: 3 },
+            { name: 'vk private messages archive', var: 2 },
+            { name: 'telegram session files', var: 1 },
+            { name: 'viber messages decrypt', var: 2 }
         ];
         
-        for (let i = 0; i < tasks.length; i++) {
-            await runTask(tasks[i].name, tasks[i].speed);
-            await delay(200 + Math.random() * 150);
-            
-            if (i === 2) {
+        for (let i = 0; i < tasksList.length; i++) {
+            await task(tasksList[i].name, tasksList[i].var);
+            await delay(180 + Math.random() * 200);
+            if (i === 3) {
                 await delay(300);
-                print("[sync] uploading thumbnails to remote", false);
+                println('[sync] uploading hashes to remote', false);
             }
-            if (i === 4) {
+            if (i === 5) {
                 await delay(250);
-                print("[*] keystore dump size: 2.4mb", false);
+                println('[*] 1247 gps points extracted', false);
             }
             if (i === 7) {
                 await delay(350);
-                print("[*] vk messages count: 18743", false);
+                println('[*] vk messages: 23451 entries', false);
             }
         }
         
-        await delay(400);
-        print("");
-        print("================================================");
-        await delay(300);
-        print("[!] security violation detected", false);
-        await delay(400);
-        print("[!] data exfiltration in progress", false);
-        await delay(350);
-        print("packets sent: 342 / 342", false);
-        await delay(300);
-        
-        const transfer = progressBar(0);
-        for (let p = 0; p <= 100; p += 4) {
-            updateProgress(transfer, p);
-            await delay(35);
-        }
-        
-        await delay(400);
-        print("[!] remote server: 45.155.205.233:443", false);
-        await delay(300);
-        print("[!] transfer complete: 127.3 mb", false);
         await delay(500);
-        print("================================================");
+        println('========================================', false);
         await delay(400);
-        print("[system] integrity check failed", false);
-        await delay(350);
-        print("[system] this is a simulation", false);
-        await delay(250);
-        print("[system] no actual data was compromised", false);
+        println('[!] security violation detected', false);
+        await delay(400);
+        println('[!] data exfiltration in progress', false);
         await delay(300);
-        print("");
-        print("user@localhost:~$ exit");
-        await delay(200);
-        print("logout");
+        println('packets sent: 486/486', false);
+        await delay(300);
         
-        const lastLine = document.createElement('div');
-        lastLine.className = 'line';
-        lastLine.innerHTML = `<span class="prompt">user@localhost:~$</span> <span class="cmd-text">_</span>`;
-        output.appendChild(lastLine);
-        output.scrollTop = output.scrollHeight;
+        const transferStart = Date.now();
+        const transferDuration = 1800;
+        const transferLine = document.createElement('div');
+        transferLine.className = 'line';
+        term.appendChild(transferLine);
+        let lastP = -1;
+        while (true) {
+            const elapsed = Date.now() - transferStart;
+            let p = Math.min(100, Math.floor(elapsed / transferDuration * 100));
+            if (p !== lastP) {
+                const filled = Math.floor(p / 100 * 40);
+                const empty = 40 - filled;
+                const bar = '█'.repeat(filled) + '░'.repeat(empty);
+                transferLine.innerText = `[${bar}] ${p}%`;
+                lastP = p;
+                term.scrollTop = term.scrollHeight;
+            }
+            if (elapsed >= transferDuration) break;
+            await delay(30);
+        }
+        transferLine.innerText = `[${'█'.repeat(40)}] 100%`;
+        
+        await delay(400);
+        println('[!] remote server: 45.155.205.233:443', false);
+        await delay(300);
+        println('[!] transfer complete: 189.4 mb', false);
+        await delay(500);
+        println('========================================', false);
+        await delay(400);
+        println('[system] integrity check failed', false);
+        await delay(350);
+        println('[system] this is a simulation', false);
+        await delay(250);
+        println('[system] no actual data was compromised', false);
+        await delay(300);
+        println('', false);
+        println('exit', true);
+        await delay(200);
+        println('logout', false);
+        println('', true, '');
     }
-
+    
     main();
 </script>
 </body>
 </html>
-```
