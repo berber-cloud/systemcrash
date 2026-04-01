@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Termux Security Scan</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: #000000;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Courier New', 'Fira Code', 'SF Mono', 'JetBrains Mono', monospace;
+            padding: 16px;
+        }
+
+        /* Контейнер в стиле Termux */
+        .terminal {
+            background: #0a0e1a;
+            width: 100%;
+            max-width: 550px;
+            height: auto;
+            min-height: 650px;
+            border-radius: 28px;
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255,255,255,0.05);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(2px);
+            border: 1px solid #2a2f3f;
+        }
+
+        /* Верхняя панель (как у Termux) */
+        .term-bar {
+            background: #11151f;
+            padding: 14px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            border-bottom: 1px solid #1f2533;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .term-title {
+            color: #00e676;
+            font-weight: bold;
+            font-size: 15px;
+            letter-spacing: 0.5px;
+            text-shadow: 0 0 3px #00e67655;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .term-title::before {
+            content: "⬤";
+            color: #ff5f56;
+            font-size: 14px;
+            text-shadow: none;
+        }
+
+        .term-status {
+            color: #6c7a89;
+            font-size: 11px;
+            font-family: monospace;
+            background: #1a1f2c;
+            padding: 4px 10px;
+            border-radius: 30px;
+        }
+
+        /* Область вывода */
+        .output {
+            flex: 1;
+            padding: 24px 20px 30px 20px;
+            background: #0b0f17;
+            color: #c0e0d0;
+            font-size: 14px;
+            line-height: 1.5;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            min-height: 550px;
+        }
+
+        /* Строка-сообщение (как лог) */
+        .log-line {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 10px;
+            border-left: 2px solid #2ecc71;
+            padding-left: 12px;
+            margin-bottom: 4px;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .prompt {
+            color: #2ecc71;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .message {
+            color: #b3e4d5;
+            word-break: break-word;
+        }
+
+        /* Блок прогресс-бара в стиле linux (квадратики -> проценты) */
+        .progress-block {
+            margin: 12px 0 8px 0;
+            background: #0f131f;
+            border-radius: 12px;
+            padding: 12px 14px;
+            border: 1px solid #252b3a;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 12px;
+            color: #9aaec0;
+            letter-spacing: 0.4px;
+        }
+
+        .task-name {
+            font-weight: bold;
+            color: #ffb347;
+        }
+
+        /* Стиль для полоски из квадратиков (█) */
+        .bars-container {
+            font-family: monospace;
+            font-size: 20px;
+            letter-spacing: 3px;
+            background: #03060c;
+            padding: 6px 10px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            color: #2ecc71;
+            text-shadow: 0 0 2px #2ecc7144;
+            word-break: break-all;
+            white-space: pre-wrap;
+        }
+
+        /* Процентный текст */
+        .percent-text {
+            font-size: 26px;
+            font-weight: bold;
+            font-family: monospace;
+            text-align: center;
+            color: #2ecc71;
+            background: #01010155;
+            padding: 8px;
+            border-radius: 24px;
+            letter-spacing: 2px;
+        }
+
+        /* Подвал с мигающим курсором */
+        .cursor-line {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 20px;
+            color: #6c7a89;
+            font-size: 13px;
+        }
+
+        .blinking-cursor {
+            width: 12px;
+            height: 18px;
+            background-color: #2ecc71;
+            animation: blink 1.1s step-end infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(-8px);}
+            to { opacity: 1; transform: translateX(0);}
+        }
+
+        /* адаптация для маленьких экранов */
+        @media (max-width: 500px) {
+            .terminal {
+                min-height: 600px;
+            }
+            .percent-text {
+                font-size: 22px;
+            }
+            .bars-container {
+                font-size: 16px;
+                letter-spacing: 2px;
+            }
+        }
+
+        /* скролл внутри вывода */
+        .output {
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+<div class="terminal">
+    <div class="term-bar">
+        <div class="term-title">Termux::SECURITY</div>
+        <div class="term-status">SESSION: LIVE | root@localhost</div>
+    </div>
+    <div class="output" id="outputArea">
+        <!-- Динамически добавляемые строки будут здесь -->
+        <div class="log-line">
+            <span class="prompt">$></span>
+            <span class="message">Initializing forensic module...</span>
+        </div>
+        <div class="log-line">
+            <span class="prompt">$></span>
+            <span class="message">Target: <span style="color:#ffaa66;">Samsung/Google/iPhone</span> [device fingerprint]</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // =============== ПУГАЮЩИЕ ЗАДАЧИ (реалистичные) ===============
+        const scaryTasks = [
+            { name: "📁 Downloading Chrome history (2023-2026)", speedPattern: "slow_fast" },
+            { name: "🔓 Decrypting VK  backup (.crypt14)", speedPattern: "slow_fast" },
+            { name: "📸 Extracting gallery thumbnails (media_0)", speedPattern: "medium_slow" },
+            { name: "🌐 Sniffing Wi-Fi credentials (Saved networks)", speedPattern: "fast_slow" },
+            { name: "🔑 Keychain dump (iCloud/Google Passwords)", speedPattern: "slow_fast" },
+            { name: "📍 GPS History (last 6 months)", speedPattern: "medium_fast" },
+            { name: "📞 Call logs + SMS metadata", speedPattern: "fast_slow" },
+            { name: "🕵️ Telegram session extraction", speedPattern: "slow_fast" },
+            { name: "💾 Cloning local storage (Documents/Downloads)", speedPattern: "slow_fast" }
+        ];
+
+        // Выбираем 5 случайных задач, чтобы не было слишком длинно, но эффектно
+        function getRandomTasks(count = 5) {
+            const shuffled = [...scaryTasks];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled.slice(0, count);
+        }
+
+        const tasksToShow = getRandomTasks(5);
+        
+        // Элементы DOM
+        const outputDiv = document.getElementById('outputArea');
+        
+        // Вспомогательная функция: добавить строку-лог
+        function addLogLine(message, highlight = false) {
+            const logLine = document.createElement('div');
+            logLine.className = 'log-line';
+            const promptSpan = document.createElement('span');
+            promptSpan.className = 'prompt';
+            promptSpan.innerText = '$>';
+            const msgSpan = document.createElement('span');
+            msgSpan.className = 'message';
+            if (highlight) {
+                msgSpan.style.color = '#ff9f4a';
+                msgSpan.style.fontWeight = 'bold';
+            }
+            msgSpan.innerHTML = message;
+            logLine.appendChild(promptSpan);
+            logLine.appendChild(msgSpan);
+            outputDiv.appendChild(logLine);
+            // Автоскролл вниз
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        }
+
+        // Создать элемент прогресс-бара (сначала отображает квадратики, потом проценты)
+        function createProgressBlock(taskName) {
+            const progressDiv = document.createElement('div');
+            progressDiv.className = 'progress-block';
+            
+            const header = document.createElement('div');
+            header.className = 'progress-header';
+            header.innerHTML = `<span class="task-name">⚡ ${taskName}</span><span>processing</span>`;
+            
+            const barsSpan = document.createElement('div');
+            barsSpan.className = 'bars-container';
+            barsSpan.id = `bars-${Date.now()}-${Math.random()}`;
+            
+            const percentSpan = document.createElement('div');
+            percentSpan.className = 'percent-text';
+            percentSpan.id = `percent-${Date.now()}-${Math.random()}`;
+            
+            progressDiv.appendChild(header);
+            progressDiv.appendChild(barsSpan);
+            progressDiv.appendChild(percentSpan);
+            
+            outputDiv.appendChild(progressDiv);
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+            
+            return { barsSpan, percentSpan, progressDiv };
+        }
+        
+        // Анимация: рисуем зеленые квадратики (полоска) и затем меняем на проценты
+        // speedPattern: 'slow_fast', 'fast_slow', 'medium_slow', 'medium_fast'
+        async function animateProgress(progressElement, totalDuration = 2800) {
+            const { barsSpan, percentSpan } = progressElement;
+            
+            // Этап 1: показываем растущую полоску из символов "█" (зеленые квадраты)
+            // Длительность этапа 1 = примерно 65% от общего времени? Сделаем 60% для квадратов, 40% для процентов
+            const barsDuration = totalDuration * 0.62; 
+            const percentDuration = totalDuration * 0.38;
+            
+            // Максимальная длина полоски (количество символов) подстраиваем под ширину экрана, но базово 30
+            const maxBars = 32;
+            let currentBars = 0;
+            const startTime = performance.now();
+            
+            // Функция обновления квадратиков (с неравномерным ускорением)
+            function updateBars(now) {
+                const elapsed = now - startTime;
+                let progress = Math.min(1, elapsed / barsDuration);
+                // Применяем разные кривые в зависимости от паттерна speedPattern, но для универсальности используем easeOutCubic + небольшая вариация
+                // Делаем дополнительный "нелинейный эффект": в начале медленно, потом резко (имитация сети)
+                let easedProgress;
+                // Эмуляция нестабильности: для всех задач чуть разный стиль, но оставим как будто то медленно, то быстро
+                // на основе task мы передали снаружи, но можно просто сделать кусочно-линейную логику.
+                // Сделаем дополнительно "рывки": если elapsed < 400ms -> progress замедлен, иначе ускоряем
+                if (elapsed < 500) {
+                    // медленный старт
+                    easedProgress = Math.pow(progress, 1.8);
+                } else if (elapsed < 1300) {
+                    // средний темп
+                    easedProgress = Math.pow(progress, 1.2);
+                } else {
+                    // финальный рывок
+                    easedProgress = Math.pow(progress, 0.7);
+                }
+                
+                const newLength = Math.floor(easedProgress * maxBars);
+                if (newLength > currentBars) {
+                    currentBars = newLength;
+                    const barString = "█".repeat(currentBars) + "░".repeat(maxBars - currentBars);
+                    barsSpan.innerText = barString;
+                    barsSpan.style.color = "#2ecc71";
+                }
+                if (elapsed < barsDuration) {
+                    requestAnimationFrame(updateBars);
+                } else {
+                    // Завершаем полоску полностью
+                    barsSpan.innerText = "█".repeat(maxBars);
+                    // Запускаем этап с процентами
+                    startPercentPhase();
+                }
+            }
+            
+            function startPercentPhase() {
+                // Скрываем или оставляем полоску, но начинаем проценты
+                barsSpan.style.opacity = "0.6";
+                barsSpan.style.filter = "blur(0px)";
+                const percentStartTime = performance.now();
+                let lastPercent = 0;
+                
+                function updatePercent(nowPercent) {
+                    const elapsedPercent = nowPercent - percentStartTime;
+                    let percentProgress = Math.min(1, elapsedPercent / percentDuration);
+                    // Делаем неравномерный рост процентов: сначала быстрее, потом плавно, чтобы казалось реалистично
+                    let percentValue;
+                    if (elapsedPercent < 400) {
+                        // скачок до 34%
+                        percentValue = Math.min(34, Math.floor(percentProgress * 45));
+                    } else if (elapsedPercent < 1000) {
+                        // от 34 до 82
+                        const t = (elapsedPercent - 400) / 600;
+                        percentValue = 34 + Math.floor(t * 48);
+                    } else {
+                        // финальная часть: 82 -> 100%
+                        const t = Math.min(1, (elapsedPercent - 1000) / (percentDuration - 1000));
+                        percentValue = 82 + Math.floor(t * 18);
+                    }
+                    if (percentValue > 100) percentValue = 100;
+                    if (percentValue !== lastPercent) {
+                        lastPercent = percentValue;
+                        percentSpan.innerText = `${percentValue}%`;
+                        // добавим визуальный эффект при 100%
+                        if (percentValue === 100) {
+                            percentSpan.style.textShadow = "0 0 8px #2ecc71";
+                            percentSpan.style.transition = "0.2s";
+                        }
+                    }
+                    if (elapsedPercent < percentDuration) {
+                        requestAnimationFrame(updatePercent);
+                    } else {
+                        percentSpan.innerText = `100% ✓`;
+                        percentSpan.style.color = "#b3ffcf";
+                        // Завершаем: добавим чек после завершения
+                        setTimeout(() => {
+                            const checkLine = document.createElement('div');
+                            checkLine.className = 'log-line';
+                            checkLine.style.marginTop = '6px';
+                            checkLine.style.borderLeftColor = '#2ecc71';
+                            checkLine.innerHTML = `<span class="prompt">✔</span><span class="message" style="color:#95e6b0;">[OK] Extraction completed → ${tasksToShow.find(t => t.name.includes(taskNameSplit))?.name || "data"} encrypted.</span>`;
+                            outputDiv.appendChild(checkLine);
+                            outputDiv.scrollTop = outputDiv.scrollHeight;
+                        }, 80);
+                    }
+                }
+                requestAnimationFrame(updatePercent);
+            }
+            
+            // запускаем анимацию квадратиков
+            requestAnimationFrame(updateBars);
+        }
+        
+        // Утилита для извлечения имени из task (для лога)
+        let taskNameSplit = "";
+        
+        // Запуск задач последовательно (с эффектом реалистичной паузы)
+        async function runScarySequence() {
+            // Добавим несколько вступительных страшных строк (усиливаем вайб)
+            await delay(400);
+            addLogLine("🛰️ Connecting to remote extraction node... [TOR]");
+            await delay(380);
+            addLogLine("🔐 Bypassing Android Verified Boot (AVB) ...", true);
+            await delay(600);
+            addLogLine("📡 Fetching device IMEI + serial (Spoof check passed)");
+            await delay(450);
+            addLogLine("⚠️ Warning: Knox triggered? ... false positive.", true);
+            await delay(300);
+            addLogLine("-------------------------------------------");
+            
+            // Цикл по задачам
+            for (let idx = 0; idx < tasksToShow.length; idx++) {
+                const task = tasksToShow[idx];
+                taskNameSplit = task.name;
+                // Создаём блок прогресса
+                const progressElem = createProgressBlock(task.name);
+                
+                // Разная длительность в зависимости от паттерна, чтобы скорость не была одинаковой
+                let duration = 2600;
+                if (task.speedPattern === "slow_fast") {
+                    duration = 3200;
+                } else if (task.speedPattern === "fast_slow") {
+                    duration = 2400;
+                } else if (task.speedPattern === "medium_slow") {
+                    duration = 2900;
+                } else if (task.speedPattern === "medium_fast") {
+                    duration = 2700;
+                } else {
+                    duration = 2800;
+                }
+                
+                // добавим случайный микро-лог перед началом прогресса
+                if (idx === 1) {
+                    await delay(300);
+                    addLogLine("📀 Decrypting Android Keystore...");
+                    await delay(200);
+                }
+                if (idx === 3) {
+                    addLogLine("🔓 Attempting to unlock vault (bruteforce partial)");
+                    await delay(500);
+                }
+                
+                // Запускаем анимацию (квадратики -> проценты)
+                await animateProgress(progressElem, duration);
+                
+                // Небольшая задержка после завершения задачи
+                await delay(300 + Math.random() * 300);
+                
+                // Добавляем после каждой третьей задачи "напугающий" лог
+                if (idx === 1) {
+                    await delay(400);
+                    addLogLine("📤 Uploading browser history to remote cloud ... [chunk 1/4]", true);
+                }
+                if (idx === 3) {
+                    await delay(200);
+                    addLogLine("🌍 Geolocation snapshot: accuracy 5m (saved)", true);
+                }
+            }
+            
+            // Финальная фаза — тотальный пугающий финал без гифки
+            await delay(600);
+            addLogLine("============================================");
+            await delay(400);
+            addLogLine("⚠️⚠️⚠️ SECURITY BREACH ⚠️⚠️⚠️", true);
+            await delay(500);
+            addLogLine("📁 Archived & Exfiltrated: Contacts, SMS, VK, Telegram, Chrome, WiFi Keys", true);
+            await delay(700);
+            
+            // создаём финальный псевдо-блок с угрозой
+            const finalBlock = document.createElement('div');
+            finalBlock.className = 'progress-block';
+            finalBlock.style.borderColor = '#aa3e3e';
+            finalBlock.style.background = '#1a111f';
+            finalBlock.innerHTML = `
+                <div class="progress-header" style="color:#ff7b72;">🚨 CRITICAL OPERATION</div>
+                <div class="percent-text" style="color:#ff5c5c; font-size:20px;">PACKET TRANSFER : 100%</div>
+                <div style="margin-top:12px; font-size:12px; color:#ff9472;">remote server: 45.77.xx.xx (Frankfurt)</div>
+            `;
+            outputDiv.appendChild(finalBlock);
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+            
+            await delay(900);
+            addLogLine("❗❗ Для отмены отправки данных требуется авторизация...");
+            await delay(800);
+            addLogLine("💀 Попытка восстановления... ОШИБКА: сессия захвачена.");
+            await delay(600);
+            
+            // Создаём панический текст с мигающим эффектом
+            const panicDiv = document.createElement('div');
+            panicDiv.className = 'log-line';
+            panicDiv.style.borderLeftColor = '#ff4444';
+            panicDiv.style.backgroundColor = '#22000033';
+            panicDiv.style.padding = '8px 6px';
+            panicDiv.style.borderRadius = '10px';
+            panicDiv.innerHTML = `<span class="prompt" style="color:#ff6666;">⛔</span><span class="message" style="color:#ff9f8f; font-weight:bold;">FULL DATA LEAK DETECTED! Ваши данные отправлены в защищенное хранилище...</span>`;
+            outputDiv.appendChild(panicDiv);
+            
+            await delay(1200);
+            addLogLine("🃏 Шутка? Проверьте соединение... Нажмите для выхода...");
+            await delay(800);
+            
+            // Финальный сюрприз: финальная строчка с разблокировкой
+            const finalJokeLine = document.createElement('div');
+            finalJokeLine.className = 'log-line';
+            finalJokeLine.style.borderLeftColor = '#ffb347';
+            finalJokeLine.style.animation = 'fadeIn 0.5s';
+            finalJokeLine.innerHTML = `<span class="prompt" style="color:#ffe484;">🎭</span><span class="message" style="color:#ffe0a3; font-size:15px;">НИЧЕГО НЕ УКРАДЕНО! Это розыгрыш от твоего друга (Termux Prank). Нажмите любую кнопку для выхода или обновите страницу :)</span>`;
+            outputDiv.appendChild(finalJokeLine);
+            
+            // добавляем курсорную строку
+            const cursorDiv = document.createElement('div');
+            cursorDiv.className = 'cursor-line';
+            cursorDiv.innerHTML = `<span>root@localhost:~$</span><span>waiting for input...</span><div class="blinking-cursor"></div>`;
+            outputDiv.appendChild(cursorDiv);
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        }
+        
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+        
+        // Сначала добавим ещё пару строк для реализма
+        function initPreMessages() {
+            setTimeout(() => {
+                addLogLine("🔍 Android ID: " + Math.random().toString(16).substring(2,10).toUpperCase() + " (extracted)");
+                addLogLine("📱 Model: " + getRandomDevice());
+                addLogLine("🌐 Bypassing SSL pinning ... success");
+            }, 100);
+        }
+        
+        function getRandomDevice() {
+            const devices = ["SM-G998B", "iPhone 14 Pro", "Pixel 7 Pro", "Xiaomi 13 Ultra", "SM-A536E", "OnePlus 11"];
+            return devices[Math.floor(Math.random() * devices.length)];
+        }
+        
+        // Запуск всего сценария
+        setTimeout(() => {
+            runScarySequence();
+        }, 300);
+        initPreMessages();
+        
+        // Добавим обработчик для имитации "активности" - если тапнуть на экран, ничего страшного, просто фиксация
+        document.body.addEventListener('touchstart', function(e) {
+            // Можно ничего не делать, но добавим эффект "игнор", чтобы не ломать immersion
+        });
+    })();
+</script>
+</body>
+</html>
