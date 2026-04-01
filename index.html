@@ -3,157 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Terminal :: security_scan</title>
+    <title>terminal :: security_extract</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            background: #0a0c10;
+            background: #000000;
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-family: 'Courier New', 'Fira Code', 'SF Mono', monospace;
+            font-family: 'Courier New', 'Fira Code', 'SF Mono', 'JetBrains Mono', monospace;
             padding: 12px;
         }
 
         .terminal {
-            background: #0c0f14;
+            background: #0a0c10;
             width: 100%;
-            max-width: 580px;
-            height: auto;
-            min-height: 680px;
-            border-radius: 12px;
+            max-width: 800px;
+            height: 90vh;
+            min-height: 600px;
+            border-radius: 8px;
             overflow: hidden;
             display: flex;
             flex-direction: column;
             border: 1px solid #2a2f3a;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
         }
 
-        .term-bar {
-            background: #111418;
-            padding: 10px 16px;
+        .term-header {
+            background: #0f1217;
+            padding: 8px 14px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid #232730;
             font-size: 12px;
+            font-family: monospace;
         }
 
         .term-title {
             color: #6a9955;
-            font-weight: 600;
-            letter-spacing: 0.3px;
         }
 
-        .term-status {
+        .term-path {
             color: #6f7b8c;
-            font-family: monospace;
         }
 
         .output {
             flex: 1;
-            padding: 20px 18px 26px 18px;
-            background: #0b0e12;
+            padding: 16px 14px;
+            background: #0a0c10;
             color: #cbd5e6;
             font-size: 13px;
-            line-height: 1.55;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            min-height: 600px;
+            line-height: 1.5;
             overflow-y: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-word;
         }
 
-        .log-line {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: baseline;
-            gap: 10px;
-            border-left: 2px solid #4c8b5e;
-            padding-left: 12px;
-            margin-bottom: 4px;
-            font-family: monospace;
+        .line {
+            margin-bottom: 2px;
+            display: block;
         }
 
         .prompt {
             color: #6a9955;
-            font-weight: 500;
-            white-space: nowrap;
+            display: inline-block;
+            margin-right: 10px;
         }
 
-        .message {
+        .cmd-text {
             color: #cbd5e6;
-            word-break: break-word;
         }
 
-        .progress-block {
-            margin: 10px 0 12px 0;
-            background: #0e1117;
-            border-radius: 8px;
-            padding: 12px 14px;
-            border: 1px solid #262c36;
-        }
-
-        .progress-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 12px;
-            font-size: 12px;
-            color: #8e9eae;
+        .progress-line {
+            color: #6a9955;
+            letter-spacing: 1px;
             font-family: monospace;
         }
 
-        .task-name {
+        .warning {
             color: #e5c07b;
         }
 
-        .bars-container {
-            font-family: monospace;
-            font-size: 18px;
-            letter-spacing: 2px;
-            background: #080b0f;
-            padding: 6px 8px;
-            border-radius: 6px;
-            margin-bottom: 12px;
-            color: #6a9955;
-            word-break: break-all;
-            white-space: pre-wrap;
+        .error {
+            color: #e06c75;
         }
 
-        .percent-text {
-            font-size: 24px;
-            font-weight: 500;
-            font-family: monospace;
-            text-align: center;
-            color: #6a9955;
-            background: #080b0e;
-            padding: 8px;
-            border-radius: 6px;
-            letter-spacing: 1px;
+        .success {
+            color: #98c379;
         }
 
-        .cursor-line {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-top: 20px;
-            color: #6f7b8c;
-            font-size: 12px;
-        }
-
-        .blinking-cursor {
+        .cursor {
+            display: inline-block;
             width: 10px;
-            height: 16px;
+            height: 14px;
             background-color: #6a9955;
             animation: blink 1s step-end infinite;
+            vertical-align: middle;
+            margin-left: 4px;
         }
 
         @keyframes blink {
@@ -161,307 +115,224 @@
             50% { opacity: 0; }
         }
 
-        @media (max-width: 500px) {
-            .percent-text {
-                font-size: 20px;
-            }
-            .bars-container {
-                font-size: 15px;
-            }
-            .output {
-                padding: 16px;
-            }
+        ::-webkit-scrollbar {
+            width: 8px;
+            background: #1a1d24;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #3a4050;
+            border-radius: 4px;
         }
     </style>
 </head>
 <body>
 <div class="terminal">
-    <div class="term-bar">
-        <div class="term-title">terminal@scan:~</div>
-        <div class="term-status">root | live session</div>
+    <div class="term-header">
+        <span class="term-title">user@localhost:~</span>
+        <span class="term-path">/data/local/tmp</span>
     </div>
-    <div class="output" id="outputArea">
-        <div class="log-line">
-            <span class="prompt">$></span>
-            <span class="message">initializing forensic extraction module</span>
-        </div>
-        <div class="log-line">
-            <span class="prompt">$></span>
-            <span class="message">target fingerprint: Android/ios device detected</span>
-        </div>
+    <div class="output" id="output">
+        <div class="line"><span class="prompt">user@localhost:~$</span> <span class="cmd-text">./extract --target android --mode forensic</span></div>
+        <div class="line"><span class="prompt">></span> <span class="cmd-text">initializing extraction engine v2.4</span></div>
     </div>
 </div>
 
 <script>
-    (function() {
-        const tasksList = [
-            { name: "extracting Chrome browsing history (2023-2026)", speedPattern: "slow_fast" },
-            { name: "decrypting VK messenger backups (local storage)", speedPattern: "slow_fast" },
-            { name: "retrieving gallery metadata + thumbnails", speedPattern: "medium_slow" },
-            { name: "sniffing saved Wi-Fi networks (credentials)", speedPattern: "fast_slow" },
-            { name: "keychain dump: Google passwords / auth tokens", speedPattern: "slow_fast" },
-            { name: "GPS location history (last 8 months)", speedPattern: "medium_fast" },
-            { name: "call logs + SMS database extraction", speedPattern: "fast_slow" },
-            { name: "VK private messages archive (decrypting)", speedPattern: "slow_fast" },
-            { name: "cloning local storage: Documents, Downloads", speedPattern: "slow_fast" }
+    const outputDiv = document.getElementById('output');
+
+    function addLine(text, type = 'normal') {
+        const lineDiv = document.createElement('div');
+        lineDiv.className = 'line';
+        
+        let colorClass = '';
+        if (type === 'warning') colorClass = 'warning';
+        else if (type === 'error') colorClass = 'error';
+        else if (type === 'success') colorClass = 'success';
+        else if (type === 'prompt') {
+            lineDiv.innerHTML = `<span class="prompt">${text}</span>`;
+            outputDiv.appendChild(lineDiv);
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+            return;
+        }
+        
+        if (type === 'normal') {
+            lineDiv.innerHTML = `<span class="cmd-text">${text}</span>`;
+        } else {
+            lineDiv.innerHTML = `<span class="${colorClass}">${text}</span>`;
+        }
+        outputDiv.appendChild(lineDiv);
+        outputDiv.scrollTop = outputDiv.scrollHeight;
+    }
+
+    function addPromptLine(cmd) {
+        const lineDiv = document.createElement('div');
+        lineDiv.className = 'line';
+        lineDiv.innerHTML = `<span class="prompt">user@localhost:~$</span> <span class="cmd-text">${cmd}</span>`;
+        outputDiv.appendChild(lineDiv);
+        outputDiv.scrollTop = outputDiv.scrollHeight;
+    }
+
+    function addOutputLine(content) {
+        const lineDiv = document.createElement('div');
+        lineDiv.className = 'line';
+        lineDiv.innerHTML = `<span class="cmd-text">${content}</span>`;
+        outputDiv.appendChild(lineDiv);
+        outputDiv.scrollTop = outputDiv.scrollHeight;
+    }
+
+    function addProgressBar(percent, barsCount = 35) {
+        const filled = Math.floor((percent / 100) * barsCount);
+        const empty = barsCount - filled;
+        const bar = '█'.repeat(filled) + '░'.repeat(empty);
+        const lineDiv = document.createElement('div');
+        lineDiv.className = 'line';
+        lineDiv.innerHTML = `<span class="progress-line">[${bar}] ${percent}%</span>`;
+        outputDiv.appendChild(lineDiv);
+        outputDiv.scrollTop = outputDiv.scrollHeight;
+        return lineDiv;
+    }
+
+    function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function updateProgress(percent, existingLine) {
+        const barsCount = 35;
+        const filled = Math.floor((percent / 100) * barsCount);
+        const empty = barsCount - filled;
+        const bar = '█'.repeat(filled) + '░'.repeat(empty);
+        existingLine.innerHTML = `<span class="progress-line">[${bar}] ${percent}%</span>`;
+        outputDiv.scrollTop = outputDiv.scrollHeight;
+    }
+
+    async function runTaskWithProgress(taskName, durationPattern = 'normal') {
+        addOutputLine(`[>] ${taskName}`);
+        
+        let duration = 2800;
+        if (durationPattern === 'slow_fast') duration = 3400;
+        else if (durationPattern === 'fast_slow') duration = 2200;
+        else if (durationPattern === 'medium_slow') duration = 3000;
+        else if (durationPattern === 'medium_fast') duration = 2600;
+        
+        const progressLine = addProgressBar(0);
+        const startTime = Date.now();
+        
+        let lastPercent = 0;
+        
+        while (true) {
+            const elapsed = Date.now() - startTime;
+            let percent = Math.min(100, Math.floor((elapsed / duration) * 100));
+            
+            if (elapsed < 400) {
+                percent = Math.min(18, Math.floor(percent * 0.7));
+            } else if (elapsed < 1200) {
+                percent = 18 + Math.floor(((elapsed - 400) / 800) * 45);
+            } else if (elapsed < 2200) {
+                percent = 63 + Math.floor(((elapsed - 1200) / 1000) * 27);
+            } else {
+                percent = 90 + Math.floor(((elapsed - 2200) / (duration - 2200)) * 10);
+                if (percent > 100) percent = 100;
+            }
+            
+            percent = Math.min(100, percent);
+            
+            if (percent !== lastPercent) {
+                await updateProgress(percent, progressLine);
+                lastPercent = percent;
+            }
+            
+            if (elapsed >= duration) {
+                await updateProgress(100, progressLine);
+                break;
+            }
+            await delay(50);
+        }
+        
+        addOutputLine(`[✓] ${taskName} -> completed`);
+    }
+
+    async function runSequence() {
+        await delay(300);
+        addOutputLine("target: android device (sdk 33)");
+        await delay(200);
+        addOutputLine("fingerprint: google/raven/raven:13/TQ2A/123456:user/release-keys");
+        await delay(250);
+        addOutputLine("bypassing secure boot verification");
+        await delay(400);
+        addOutputLine("--------------------------------------------------");
+        await delay(300);
+        
+        const tasks = [
+            { name: "extracting chrome browsing history (2023-2026)", pattern: "slow_fast" },
+            { name: "decrypting vk messenger database", pattern: "slow_fast" },
+            { name: "retrieving gallery thumbnails + media metadata", pattern: "medium_slow" },
+            { name: "sniffing saved wifi networks (psk)", pattern: "fast_slow" },
+            { name: "keychain dump: google passwords / tokens", pattern: "slow_fast" },
+            { name: "gps location history (last 6 months)", pattern: "medium_fast" },
+            { name: "call logs + sms database extraction", pattern: "fast_slow" },
+            { name: "vk private messages archive (decrypt)", pattern: "slow_fast" }
         ];
-
-        function getRandomTasks(count = 5) {
-            const shuffled = [...tasksList];
-            for (let i = shuffled.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        
+        for (let i = 0; i < tasks.length; i++) {
+            await runTaskWithProgress(tasks[i].name, tasks[i].pattern);
+            await delay(180 + Math.random() * 200);
+            
+            if (i === 2) {
+                await delay(300);
+                addOutputLine("[chunk] uploading preview data to remote storage", "warning");
             }
-            return shuffled.slice(0, count);
-        }
-
-        const selectedTasks = getRandomTasks(5);
-        const outputDiv = document.getElementById('outputArea');
-
-        function addLogLine(message, isWarning = false) {
-            const logLine = document.createElement('div');
-            logLine.className = 'log-line';
-            const promptSpan = document.createElement('span');
-            promptSpan.className = 'prompt';
-            promptSpan.innerText = '$>';
-            const msgSpan = document.createElement('span');
-            msgSpan.className = 'message';
-            if (isWarning) {
-                msgSpan.style.color = '#e5c07b';
+            if (i === 4) {
+                await delay(250);
+                addOutputLine("[sync] keystream integrity verified", "success");
             }
-            msgSpan.innerText = message;
-            logLine.appendChild(promptSpan);
-            logLine.appendChild(msgSpan);
-            outputDiv.appendChild(logLine);
-            outputDiv.scrollTop = outputDiv.scrollHeight;
-        }
-
-        function createProgressBlock(taskName) {
-            const progressDiv = document.createElement('div');
-            progressDiv.className = 'progress-block';
-            
-            const header = document.createElement('div');
-            header.className = 'progress-header';
-            header.innerHTML = `<span class="task-name">[proc] ${taskName}</span><span>in progress</span>`;
-            
-            const barsSpan = document.createElement('div');
-            barsSpan.className = 'bars-container';
-            barsSpan.id = 'bars-' + Date.now() + '-' + Math.random();
-            
-            const percentSpan = document.createElement('div');
-            percentSpan.className = 'percent-text';
-            percentSpan.id = 'percent-' + Date.now() + '-' + Math.random();
-            
-            progressDiv.appendChild(header);
-            progressDiv.appendChild(barsSpan);
-            progressDiv.appendChild(percentSpan);
-            
-            outputDiv.appendChild(progressDiv);
-            outputDiv.scrollTop = outputDiv.scrollHeight;
-            
-            return { barsSpan, percentSpan, progressDiv };
-        }
-
-        async function animateProgress(progressElement, totalDuration = 2800) {
-            const { barsSpan, percentSpan } = progressElement;
-            const maxBars = 34;
-            let currentBars = 0;
-            const barsDuration = totalDuration * 0.62;
-            const percentDuration = totalDuration * 0.38;
-            const startTime = performance.now();
-            
-            function updateBars(now) {
-                const elapsed = now - startTime;
-                let progress = Math.min(1, elapsed / barsDuration);
-                
-                let easedProgress;
-                if (elapsed < 500) {
-                    easedProgress = Math.pow(progress, 1.7);
-                } else if (elapsed < 1300) {
-                    easedProgress = Math.pow(progress, 1.2);
-                } else {
-                    easedProgress = Math.pow(progress, 0.7);
-                }
-                
-                const newLength = Math.floor(easedProgress * maxBars);
-                if (newLength > currentBars) {
-                    currentBars = newLength;
-                    const barString = "█".repeat(currentBars) + "░".repeat(maxBars - currentBars);
-                    barsSpan.innerText = barString;
-                }
-                if (elapsed < barsDuration) {
-                    requestAnimationFrame(updateBars);
-                } else {
-                    barsSpan.innerText = "█".repeat(maxBars);
-                    startPercentPhase();
-                }
-            }
-            
-            function startPercentPhase() {
-                barsSpan.style.opacity = "0.7";
-                const percentStartTime = performance.now();
-                let lastPercent = 0;
-                
-                function updatePercent(nowPercent) {
-                    const elapsedPercent = nowPercent - percentStartTime;
-                    let percentProgress = Math.min(1, elapsedPercent / percentDuration);
-                    let percentValue;
-                    if (elapsedPercent < 400) {
-                        percentValue = Math.min(34, Math.floor(percentProgress * 45));
-                    } else if (elapsedPercent < 1000) {
-                        const t = (elapsedPercent - 400) / 600;
-                        percentValue = 34 + Math.floor(t * 48);
-                    } else {
-                        const t = Math.min(1, (elapsedPercent - 1000) / (percentDuration - 1000));
-                        percentValue = 82 + Math.floor(t * 18);
-                    }
-                    if (percentValue > 100) percentValue = 100;
-                    if (percentValue !== lastPercent) {
-                        lastPercent = percentValue;
-                        percentSpan.innerText = percentValue + "%";
-                        if (percentValue === 100) {
-                            percentSpan.style.textShadow = "0 0 2px #6a9955";
-                        }
-                    }
-                    if (elapsedPercent < percentDuration) {
-                        requestAnimationFrame(updatePercent);
-                    } else {
-                        percentSpan.innerText = "100% [done]";
-                        percentSpan.style.color = "#8bcb8c";
-                        setTimeout(() => {
-                            const completeLine = document.createElement('div');
-                            completeLine.className = 'log-line';
-                            completeLine.style.marginTop = '6px';
-                            completeLine.style.borderLeftColor = '#6a9955';
-                            completeLine.innerHTML = `<span class="prompt">[OK]</span><span class="message" style="color:#8bcb8c;">extraction completed -> chunk stored</span>`;
-                            outputDiv.appendChild(completeLine);
-                            outputDiv.scrollTop = outputDiv.scrollHeight;
-                        }, 80);
-                    }
-                }
-                requestAnimationFrame(updatePercent);
-            }
-            
-            requestAnimationFrame(updateBars);
-        }
-
-        function delay(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
-
-        async function runSequence() {
-            await delay(300);
-            addLogLine("connecting to remote extraction node");
-            await delay(380);
-            addLogLine("bypassing android verified boot", true);
-            await delay(550);
-            addLogLine("fetching device identifiers + serial", true);
-            await delay(420);
-            addLogLine("bypassing secure folder restrictions");
-            await delay(300);
-            addLogLine("--------------------------------------------------");
-            
-            for (let i = 0; i < selectedTasks.length; i++) {
-                const task = selectedTasks[i];
-                const progressElem = createProgressBlock(task.name);
-                
-                let duration = 2700;
-                if (task.speedPattern === "slow_fast") duration = 3200;
-                else if (task.speedPattern === "fast_slow") duration = 2400;
-                else if (task.speedPattern === "medium_slow") duration = 2900;
-                else if (task.speedPattern === "medium_fast") duration = 2600;
-                else duration = 2800;
-                
-                if (i === 1) {
-                    await delay(280);
-                    addLogLine("extracting encrypted keystore entries");
-                    await delay(180);
-                }
-                if (i === 2 && task.name.includes("VK")) {
-                    await delay(200);
-                    addLogLine("loading VK database schema", true);
-                }
-                
-                await animateProgress(progressElem, duration);
-                await delay(280 + Math.random() * 250);
-                
-                if (i === 1) {
-                    await delay(300);
-                    addLogLine("uploading browser history to remote storage [chunk 1/3]", true);
-                }
-                if (i === 3) {
-                    await delay(220);
-                    addLogLine("geolocation snapshot: accuracy 8m (stored)", true);
-                }
-            }
-            
-            await delay(500);
-            addLogLine("==================================================");
-            await delay(450);
-            addLogLine("SECURITY ALERT: unauthorized data transfer", true);
-            await delay(550);
-            addLogLine("archived: chrome history, vk messages, contacts, sms, wifi keys, gps logs", true);
-            await delay(600);
-            
-            const finalBlock = document.createElement('div');
-            finalBlock.className = 'progress-block';
-            finalBlock.style.borderColor = '#8b5a5a';
-            finalBlock.style.background = '#12161c';
-            finalBlock.innerHTML = `
-                <div class="progress-header" style="color:#e5c07b;">[critical] packet transmission</div>
-                <div class="percent-text" style="color:#e5b87b; font-size:20px;">transfer status: 100%</div>
-                <div style="margin-top:10px; font-size:11px; color:#8e9eae;">remote endpoint: 185.xxx.xx.xx</div>
-            `;
-            outputDiv.appendChild(finalBlock);
-            outputDiv.scrollTop = outputDiv.scrollHeight;
-            
-            await delay(850);
-            addLogLine("authorization required to cancel upload");
-            await delay(700);
-            addLogLine("error: session token revoked, data already replicated", true);
-            await delay(500);
-            
-            const warningDiv = document.createElement('div');
-            warningDiv.className = 'log-line';
-            warningDiv.style.borderLeftColor = '#b87c5a';
-            warningDiv.style.background = '#191e26';
-            warningDiv.style.padding = '6px 8px';
-            warningDiv.style.borderRadius = '6px';
-            warningDiv.innerHTML = `<span class="prompt">[!]</span><span class="message" style="color:#e5b87b;">full data snapshot transmitted to remote storage</span>`;
-            outputDiv.appendChild(warningDiv);
-            
-            await delay(1000);
-            addLogLine("integrity check completed");
-            await delay(600);
-            addLogLine("[system] no malicious payload detected. prank simulation finished.");
-            await delay(400);
-            addLogLine("press any key or refresh to exit simulation");
-            
-            const finalCursor = document.createElement('div');
-            finalCursor.className = 'cursor-line';
-            finalCursor.innerHTML = `<span>root@scan:~$</span><span>idle</span><div class="blinking-cursor"></div>`;
-            outputDiv.appendChild(finalCursor);
-            outputDiv.scrollTop = outputDiv.scrollHeight;
         }
         
-        function addInitialMessages() {
-            setTimeout(() => {
-                addLogLine("android_id: " + Math.random().toString(16).substring(2,10).toUpperCase());
-                addLogLine("device fingerprint: " + getRandomModel());
-                addLogLine("ssl pinning bypassed");
-            }, 120);
+        await delay(500);
+        addOutputLine("==================================================");
+        await delay(400);
+        addOutputLine("[!] security breach detected", "error");
+        await delay(450);
+        addOutputLine("[!] unauthorized data transfer in progress", "warning");
+        await delay(500);
+        addOutputLine("archived data: chrome history, vk messages, contacts, sms, wifi keys, gps tracks", "warning");
+        await delay(600);
+        
+        addOutputLine("[transfer] remote endpoint: 185.165.29.101:443", "warning");
+        const transferLine = addProgressBar(0);
+        for (let p = 0; p <= 100; p += 5) {
+            await updateProgress(p, transferLine);
+            await delay(40);
         }
         
-        function getRandomModel() {
-            const models = ["SM-G998B", "SM-A525F", "Pixel 6 Pro", "iPhone14,2", "Xiaomi 2203", "OnePlus LE2123"];
-            return models[Math.floor(Math.random() * models.length)];
-        }
+        await delay(400);
+        addOutputLine("[error] session token compromised, replication complete", "error");
+        await delay(500);
+        addOutputLine("[!] full data snapshot transmitted", "error");
         
-        setTimeout(() => {
-            runSequence();
-        }, 280);
-        addInitialMessages();
-    })();
+        await delay(700);
+        addOutputLine("==================================================");
+        await delay(400);
+        addOutputLine("[system] no malicious payload found", "success");
+        await delay(300);
+        addOutputLine("[system] this is a simulation / security awareness test", "success");
+        await delay(200);
+        addOutputLine("[system] no data was actually extracted", "success");
+        
+        await delay(600);
+        addPromptLine("exit");
+        await delay(200);
+        addOutputLine("logout");
+        await delay(300);
+        
+        const cursorLine = document.createElement('div');
+        cursorLine.className = 'line';
+        cursorLine.innerHTML = `<span class="prompt">user@localhost:~$</span> <span class="cursor"></span>`;
+        outputDiv.appendChild(cursorLine);
+        outputDiv.scrollTop = outputDiv.scrollHeight;
+    }
+
+    runSequence();
 </script>
 </body>
 </html>
